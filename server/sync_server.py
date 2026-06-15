@@ -58,10 +58,34 @@ async def notify_clients():
     except Exception as e:
         print(f"Error reading notebook: {e}")
 
+async def send_local_to_client(websocket):
+    try:
+        if not os.path.exists(IPYNB_FILE):
+            return
+        with open(IPYNB_FILE, 'r', encoding='utf-8') as f:
+            nb = nbformat.read(f, as_version=4)
+        
+        cells_data = []
+        for cell in nb.cells:
+            source = cell.source
+            if isinstance(source, list):
+                source = "".join(source)
+            cells_data.append({
+                "cell_type": cell.cell_type,
+                "source": source
+            })
+            
+        message = json.dumps({"type": "update_from_local", "cells": cells_data})
+        await websocket.send(message)
+        print("Sent initial local notebook state to extension.")
+    except Exception as e:
+        print(f"Error sending initial notebook: {e}")
+
 async def handler(websocket):
     global is_writing
     clients.add(websocket)
     print("Extension connected.")
+    await send_local_to_client(websocket)
     try:
         async for message in websocket:
             data = json.loads(message)
