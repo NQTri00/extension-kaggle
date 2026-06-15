@@ -5,7 +5,7 @@ let ws = null;
 let isConnected = false;
 
 function connectWebSocket() {
-    ws = new WebSocket("ws://localhost:8765");
+    ws = new WebSocket("ws://127.0.0.1:8765");
     
     ws.onopen = function() {
         console.log("Kaggle Antigravity Sync: Connected to local sync server.");

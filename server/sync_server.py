@@ -90,6 +90,30 @@ async def handler(websocket):
         async for message in websocket:
             data = json.loads(message)
             if data["type"] == "update_from_kaggle":
+                # Detect if the incoming cells are actually different from local notebook
+                is_different = True
+                try:
+                    if os.path.exists(IPYNB_FILE):
+                        with open(IPYNB_FILE, 'r', encoding='utf-8') as f:
+                            local_nb = nbformat.read(f, as_version=4)
+                        if len(local_nb.cells) == len(data["cells"]):
+                            match = True
+                            for idx, cell_data in enumerate(data["cells"]):
+                                local_cell = local_nb.cells[idx]
+                                local_source = local_cell.source
+                                if isinstance(local_source, list):
+                                    local_source = "".join(local_source)
+                                if local_cell.cell_type != cell_data["cell_type"] or local_source != cell_data["source"]:
+                                    match = False
+                                    break
+                            if match:
+                                is_different = False
+                except Exception as compare_err:
+                    print(f"Error comparing notebooks: {compare_err}")
+                
+                if not is_different:
+                    continue  # Skip writing to prevent echo watchdog loops
+                
                 print("Received update from Kaggle, saving to local .ipynb")
                 is_writing = True
                 
@@ -142,8 +166,8 @@ async def main():
     observer.schedule(NotebookHandler(), path=SCRIPT_DIR, recursive=False)
     observer.start()
     
-    async with websockets.serve(handler, "localhost", 8765):
-        print("WebSocket server running on ws://localhost:8765")
+    async with websockets.serve(handler, "127.0.0.1", 8765):
+        print("WebSocket server running on ws://127.0.0.1:8765")
         print(f"Watching for changes on {os.path.basename(IPYNB_FILE)} in {SCRIPT_DIR}...")
         await asyncio.Future()  # run forever
 

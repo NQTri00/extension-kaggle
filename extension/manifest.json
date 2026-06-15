@@ -10,6 +10,9 @@
     "*://*.kaggle.com/*",
     "*://*.kaggle.net/*",
     "*://*.kaggleusercontent.com/*",
+    "http://127.0.0.1:8765/*",
+    "ws://127.0.0.1:8765/*",
+    "http://localhost:8765/*",
     "ws://localhost:8765/*"
   ],
   "content_scripts": [
