@@ -10,6 +10,12 @@ from watchdog.events import FileSystemEventHandler
 # Silence websockets handshake and connection tracebacks from port probing
 logging.getLogger("websockets").setLevel(logging.CRITICAL)
 
+# Force print to flush instantly for real-time console logs in Git Bash / MINGW64
+import builtins
+def print(*args, **kwargs):
+    kwargs.setdefault('flush', True)
+    builtins.print(*args, **kwargs)
+
 IPYNB_FILE = "kaggle_sync.ipynb"
 clients = set()
 is_writing = False
