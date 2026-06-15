@@ -24,8 +24,11 @@ is_writing = False
 class NotebookHandler(FileSystemEventHandler):
     def on_modified(self, event):
         global is_writing
-        src_path = os.path.abspath(event.src_path)
-        target_path = os.path.abspath(IPYNB_FILE)
+        src_path = os.path.normcase(os.path.abspath(event.src_path))
+        target_path = os.path.normcase(os.path.abspath(IPYNB_FILE))
+        if not event.is_directory and src_path.endswith('.ipynb'):
+            print(f"Watchdog detected change: {event.src_path} (normalized: {src_path})")
+            print(f"Watching for target: {IPYNB_FILE} (normalized: {target_path})")
         if src_path == target_path and not is_writing:
             print(f"kaggle_sync.ipynb changed locally. Notifying extension...")
             asyncio.run_coroutine_threadsafe(notify_clients(), loop)
@@ -33,6 +36,8 @@ class NotebookHandler(FileSystemEventHandler):
 async def notify_clients():
     if not clients: return
     try:
+        # Wait 100ms to allow the editor to finish writing and release its lock
+        await asyncio.sleep(0.1)
         with open(IPYNB_FILE, 'r', encoding='utf-8') as f:
             nb = nbformat.read(f, as_version=4)
         
