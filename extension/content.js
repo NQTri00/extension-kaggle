@@ -1,13 +1,5 @@
 console.log("Kaggle Antigravity Sync: content script loaded");
 
-// Inject script into main page to access Monaco editor API
-const script = document.createElement('script');
-script.src = chrome.runtime.getURL('inject.js');
-script.onload = function() {
-    this.remove();
-};
-(document.head || document.documentElement).appendChild(script);
-
 // WebSocket connection to local server
 let ws = null;
 let isConnected = false;
