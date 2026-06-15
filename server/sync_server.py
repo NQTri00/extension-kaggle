@@ -16,15 +16,18 @@ def print(*args, **kwargs):
     kwargs.setdefault('flush', True)
     builtins.print(*args, **kwargs)
 
-IPYNB_FILE = "kaggle_sync.ipynb"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+IPYNB_FILE = os.path.join(SCRIPT_DIR, "kaggle_sync.ipynb")
 clients = set()
 is_writing = False
 
 class NotebookHandler(FileSystemEventHandler):
     def on_modified(self, event):
         global is_writing
-        if event.src_path.endswith(IPYNB_FILE) and not is_writing:
-            print(f"{IPYNB_FILE} changed locally. Notifying extension...")
+        src_path = os.path.abspath(event.src_path)
+        target_path = os.path.abspath(IPYNB_FILE)
+        if src_path == target_path and not is_writing:
+            print(f"kaggle_sync.ipynb changed locally. Notifying extension...")
             asyncio.run_coroutine_threadsafe(notify_clients(), loop)
 
 async def notify_clients():
@@ -62,7 +65,8 @@ async def handler(websocket):
                 is_writing = True
                 
                 # Dump raw JSON for debugging
-                with open('kaggle_debug.json', 'w', encoding='utf-8') as f:
+                debug_path = os.path.join(SCRIPT_DIR, 'kaggle_debug.json')
+                with open(debug_path, 'w', encoding='utf-8') as f:
                     json.dump(data, f, indent=2)
                 
                 nb = nbformat.v4.new_notebook()
@@ -86,8 +90,9 @@ async def handler(websocket):
                 await asyncio.sleep(0.5)
                 is_writing = False
             elif data["type"] == "dump_html":
-                print("Received HTML dump from Kaggle. Saving to kaggle_dump.html")
-                with open("kaggle_dump.html", "w", encoding="utf-8") as f:
+                html_path = os.path.join(SCRIPT_DIR, "kaggle_dump.html")
+                print(f"Received HTML dump from Kaggle. Saving to {html_path}")
+                with open(html_path, "w", encoding="utf-8") as f:
                     f.write(data["html"])
     except websockets.exceptions.ConnectionClosed:
         print("Extension disconnected.")
@@ -105,12 +110,12 @@ async def main():
             nbformat.write(nb, f)
             
     observer = Observer()
-    observer.schedule(NotebookHandler(), path=".", recursive=False)
+    observer.schedule(NotebookHandler(), path=SCRIPT_DIR, recursive=False)
     observer.start()
     
     async with websockets.serve(handler, "localhost", 8765):
         print("WebSocket server running on ws://localhost:8765")
-        print(f"Watching for changes on {IPYNB_FILE}...")
+        print(f"Watching for changes on {os.path.basename(IPYNB_FILE)} in {SCRIPT_DIR}...")
         await asyncio.Future()  # run forever
 
 if __name__ == "__main__":
