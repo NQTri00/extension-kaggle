@@ -142,6 +142,9 @@ async def handler(websocket):
                 # Small delay to prevent echo back from watchdog
                 await asyncio.sleep(0.5)
                 is_writing = False
+            elif data["type"] == "request_pull":
+                print("Received pull request from extension. Sending local notebook state...")
+                await send_local_to_client(websocket)
             elif data["type"] == "dump_html":
                 html_path = os.path.join(SCRIPT_DIR, "kaggle_dump.html")
                 print(f"Received HTML dump from Kaggle. Saving to {html_path}")

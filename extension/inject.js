@@ -83,12 +83,21 @@ function extractCells() {
     return cells;
 }
 
+let pendingLocalUpdate = null;
+
 function updateCells(cellsData) {
+    const widget = getNotebookWidget();
+    if (!widget || !widget.model || !widget.model.sharedModel) {
+        console.warn("Kaggle Antigravity Sync: Jupyter model not ready for update. Stashing update for later.");
+        pendingLocalUpdate = cellsData;
+        return;
+    }
+    pendingLocalUpdate = null; // Clear stashed update
+
     console.log("Kaggle Antigravity Sync: Updating Kaggle UI with cells from local...");
     isUpdatingFromLocal = true;
     
     // Method 1: Jupyter sharedModel (Notebook 7 / JupyterLab 4)
-    const widget = getNotebookWidget();
     if (widget && widget.model && widget.model.sharedModel) {
         console.log("Kaggle Antigravity Sync: Updating via Jupyter sharedModel");
         const sharedModel = widget.model.sharedModel;
@@ -238,10 +247,23 @@ function setupModelListeners() {
     if (widget && widget.model && widget.model.sharedModel) {
         const sharedModel = widget.model.sharedModel;
         
-        if (sharedModel.__kaggleSyncBound) return;
+        if (sharedModel.__kaggleSyncBound) {
+            // Apply pending update if we have one
+            if (pendingLocalUpdate) {
+                console.log("Kaggle Antigravity Sync: Applying stashed pending update because model is now ready.");
+                updateCells(pendingLocalUpdate);
+            }
+            return;
+        }
         sharedModel.__kaggleSyncBound = true;
         
         console.log("Kaggle Antigravity Sync: Binding to Jupyter sharedModel changes.");
+        
+        // Request initial pull from server because we are ready!
+        console.log("Kaggle Antigravity Sync: Notebook model is fully ready. Requesting initial pull from local server...");
+        window.postMessage({
+            type: 'KAGGLE_SYNC_REQUEST_INITIAL_PULL'
+        }, '*');
         
         const handleChange = () => {
             triggerKaggleSync();
@@ -249,6 +271,11 @@ function setupModelListeners() {
         
         if (sharedModel.changed && typeof sharedModel.changed.connect === 'function') {
             sharedModel.changed.connect(handleChange);
+        }
+        
+        if (pendingLocalUpdate) {
+            console.log("Kaggle Antigravity Sync: Applying stashed pending update because model is now ready.");
+            updateCells(pendingLocalUpdate);
         }
     }
 }

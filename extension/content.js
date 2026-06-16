@@ -49,6 +49,14 @@ window.addEventListener("message", (event) => {
             }));
         }
     }
+    else if (event.data.type && (event.data.type === "KAGGLE_SYNC_REQUEST_INITIAL_PULL")) {
+        if (isConnected) {
+            console.log("Kaggle Antigravity Sync: Requesting initial pull from local server.");
+            ws.send(JSON.stringify({
+                type: 'request_pull'
+            }));
+        }
+    }
     else if (event.data.type && (event.data.type === "KAGGLE_SYNC_DUMP_HTML")) {
         if (isConnected) {
             console.log("Kaggle Antigravity Sync: Sending HTML dump to local server.");
